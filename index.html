@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<meta name="theme-color" content="#8ed8ef" />
+<link rel="icon" href="data:," />
+<title>鹈鹕骑行 · Pelican Ride</title>
+<link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+<div id="app">
+  <canvas id="game"></canvas>
+
+  <!-- 全屏调色层：暖阳晕 + 暗角，给 3D 画面一点电影感 -->
+  <div id="grade"></div>
+  <!-- 受击红闪 / 加速速度线 / 飘分 -->
+  <div id="flash"></div>
+  <div id="speed-lines"></div>
+  <div id="fx-layer"></div>
+
+  <!-- 游戏内 HUD -->
+  <div id="hud">
+    <div class="hud-top">
+      <div class="panel score-panel">
+        <div class="label">得分</div>
+        <div class="score" id="score">0</div>
+        <div class="sub"><span id="coins">0</span> 金币 · <span id="distance">0</span> m · 撞碎 <span id="smashes">0</span></div>
+      </div>
+      <div class="panel best-panel">
+        <div class="label">最高分</div>
+        <div class="best" id="best">0</div>
+        <div class="lives" id="lives"><i></i><i></i><i></i></div>
+      </div>
+    </div>
+
+    <!-- 右上工具条：视角相关与暂停 -->
+    <div class="toolbar">
+      <button class="tool" id="btn-cam" aria-label="切换视角">视角</button>
+      <button class="tool" id="btn-free" aria-label="自由视角">自由</button>
+      <button class="tool" id="btn-reset" aria-label="复位视角">复位</button>
+      <button class="tool" id="btn-pause" aria-label="暂停">暂停</button>
+    </div>
+
+    <div class="combo" id="combo"></div>
+    <div class="toast" id="toast"></div>
+
+    <div class="hud-bottom">
+      <div class="panel meter-panel">
+        <div class="meter-row"><span class="meter-name">能量</span><div class="bar"><div id="energy-fill"></div></div></div>
+        <div class="meter-row"><span class="meter-name">速度</span><span class="speed-val" id="speed-val">0 km/h</span></div>
+      </div>
+      <div class="hint" id="hint">A / D 或 ← → 横移 · Shift 加速撞碎路障 · 空格跳跃闪避 · C 切视角 · F 自由旋转 · G 复位 · P 暂停</div>
+    </div>
+
+    <!-- 触控 / 鼠标可点按钮 -->
+    <div class="controls">
+      <div class="ctrl-left">
+        <button class="ctrl dir" id="btn-left" aria-label="向左">‹</button>
+        <button class="ctrl dir" id="btn-right" aria-label="向右">›</button>
+      </div>
+      <div class="ctrl-right">
+        <button class="ctrl jump" id="btn-jump" aria-label="跳跃">跳</button>
+        <button class="ctrl boost" id="btn-boost" aria-label="加速">加速</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 开始界面 -->
+  <div class="overlay" id="ready-screen">
+    <div class="card">
+      <div class="eyebrow">3D 沿海骑行</div>
+      <h1>鹈鹕骑行</h1>
+      <p class="tagline">一只鹈鹕，一辆自行车，一条没有尽头的海边公路。</p>
+      <div class="rules">
+        <div><b>自动前进</b><span>你只需要管方向、速度和时机</span></div>
+        <div><b>左右移动</b><span>A / D、← / →，或手机拖动屏幕、按住 ‹ ›</span></div>
+        <div><b>Shift 加速</b><span>冲刺时可以<strong>直接撞碎路障</strong>，额外 +25 分</span></div>
+        <div><b>空格跳跃</b><span>腾空越过障碍还有 <strong>+10 闪避奖励</strong>，手机点「跳」</span></div>
+        <div><b>金币 / 血瓶</b><span>靠近自动吸附；血瓶回 1 颗心，满血换分数</span></div>
+        <div><b>自由转视角</b><span>C / V 切 4 档，F 自由视角，右键拖动旋转、滚轮缩放，G 复位</span></div>
+        <div><b>小心路障</b><span>普通状态撞到掉 1 颗心，3 颗用完结束</span></div>
+      </div>
+      <button class="primary" id="btn-start">开始骑行</button>
+      <div class="foot">最高分 <span id="ready-best">0</span> · 进度只保存在本机浏览器</div>
+    </div>
+  </div>
+
+  <!-- 结算界面 -->
+  <div class="overlay hidden" id="over-screen">
+    <div class="card">
+      <div class="eyebrow">本局结束</div>
+      <h1 id="over-title">骑得不错</h1>
+      <div class="result">
+        <div class="result-main"><span>得分</span><b id="final-score">0</b></div>
+        <div class="result-grid four">
+          <div><span>金币</span><b id="final-coins">0</b></div>
+          <div><span>距离</span><b id="final-distance">0 m</b></div>
+          <div><span>撞碎</span><b id="final-smashes">0</b></div>
+          <div><span>最高分</span><b id="final-best">0</b></div>
+        </div>
+      </div>
+      <div class="new-record hidden" id="new-record">新纪录！</div>
+      <button class="primary" id="btn-restart">再骑一次</button>
+      <div class="foot">按 R 或回车也可以重新开始</div>
+    </div>
+  </div>
+
+  <!-- 暂停界面 -->
+  <div class="overlay hidden" id="pause-screen">
+    <div class="card compact">
+      <h1>暂停</h1>
+      <p class="tagline">歇一会儿，海风还在。</p>
+      <button class="primary" id="btn-resume">继续骑行</button>
+    </div>
+  </div>
+
+  <!-- WebGL 不可用时的兜底提示 -->
+  <div class="overlay hidden" id="error-screen">
+    <div class="card compact">
+      <h1>无法启动 3D</h1>
+      <p class="tagline" id="error-msg">当前浏览器不支持 WebGL，请换用较新的 Chrome / Safari / Edge。</p>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="./game.js"></script>
+</body>
+</html>
